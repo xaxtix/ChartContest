@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="42dp"
+    android:orientation="vertical"
+    android:background="@drawable/highlight">
+
+    <com.example.isamorodov.telegramcontest.ui.components.CheckBox
+        android:id="@+id/checkBox"
+        android:layout_width="19dp"
+        android:layout_height="19dp"
+        android:background="@null"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="16dp" />
+
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_gravity="center_vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="18dp"
+        android:layout_marginStart="58dp" />
+
+
+
+</FrameLayout>
