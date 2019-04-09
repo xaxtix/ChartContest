@@ -7,6 +7,7 @@ import android.os.Looper;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,22 +21,37 @@ public class ChartProvider {
             public void run() {
                 try {
                     AssetManager assetManager = context.getAssets();
-                    InputStream is = assetManager.open("chart_data.json");
-                    int size = 0;
-
-                    size = is.available();
-                    byte[] buffer = new byte[size];
-                    is.read(buffer);
-                    is.close();
-                    String json = new String(buffer, "UTF-8");
-
-
-                    JSONArray a = new JSONArray(json);
-                    int n = a.length();
 
                     final ArrayList<ChartData> rez = new ArrayList<>();
-                    for (int i = 0; i < n; i++) {
-                        rez.add(new ChartData(a.getJSONObject(i)));
+
+                    for (int k = 0; k < 5; k++) {
+                        InputStream is = assetManager.open((k + 1) + "/overview.json");
+
+                        int size;
+                        size = is.available();
+                        byte[] buffer = new byte[size];
+                        is.read(buffer);
+                        is.close();
+                        String json = new String(buffer, "UTF-8");
+
+
+                        switch (k) {
+                            case 1:
+                                rez.add(new DoubleLinearChartData(new JSONObject(json)));
+                                break;
+                            case 2:
+                                rez.add(new StackBarChartData(new JSONObject(json)));
+                                break;
+                            case 3:
+                                rez.add(new BarChartData(new JSONObject(json)));
+                                break;
+                            case 4:
+                                rez.add(new StackLinearChartData(new JSONObject(json)));
+                                break;
+                            default:
+                                rez.add(new ChartData(new JSONObject(json)));
+                                break;
+                        }
                     }
                     new Handler(Looper.getMainLooper()).post(new Runnable() {
                         @Override

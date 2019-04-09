@@ -1,7 +1,5 @@
 package com.example.isamorodov.telegramcontest.ui.chart;
 
-import java.util.logging.StreamHandler;
-
 public class ChartHorizontalLinesData {
 
     final public int[] values = new int[6];
@@ -25,7 +23,7 @@ public class ChartHorizontalLinesData {
 
     public static final String[] s = {"", "K", "M", "G", "T", "P"};
 
-    public String formatWholeNumber(int v) {
+    public static String formatWholeNumber(int v) {
         float num_ = v;
         int count = 0;
         if (v < 1000) {

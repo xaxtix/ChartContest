@@ -1,7 +1,6 @@
 package com.example.isamorodov.telegramcontest.ui.chart;
 
 import android.animation.ValueAnimator;
-import android.app.Dialog;
 import android.graphics.Paint;
 import android.graphics.Path;
 
@@ -23,20 +22,24 @@ public class LineViewData {
     public ValueAnimator animatorOut;
     public int linesPathBottomSize;
 
-    float[] linesPath;
-    float[] linesPathBottom;
+    public float[] linesPath;
+    public float[] linesPathBottom;
+
+
+    public int lineColor;
+
 
     public boolean enabled = true;
 
-    int alpha = 255;
+    public int alpha = 255;
 
     public LineViewData(ChartData.Line line) {
         this.line = line;
 
         paint.setStrokeWidth(dpFloat(2));
         paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeCap(Paint.Cap.ROUND);
-        if (!ChartView.USE_LINES) paint.setStrokeJoin(Paint.Join.ROUND);
+      //  paint.setStrokeCap(Paint.Cap.BUTT);
+        //if (!LinearChartView.USE_LINES) paint.setStrokeJoin(Paint.Join.ROUND);
         paint.setColor(line.color);
 
         bottomLinePaint.setStrokeWidth(dpFloat(1));
@@ -57,8 +60,7 @@ public class LineViewData {
 
     public void updateColors() {
         paint.setColor(ThemeHelper.isDark() ? line.colorDark : line.color);
-        bottomLinePaint.setColor(ThemeHelper.isDark() ? line.colorDark : line.color);
-
-        selectionPaint.setColor(ThemeHelper.isDark() ? line.colorDark : line.color);
+        bottomLinePaint.setColor(lineColor = ThemeHelper.isDark() ? line.colorDark : line.color);
+        selectionPaint.setColor(lineColor);
     }
 }

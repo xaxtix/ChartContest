@@ -1,7 +1,6 @@
 package com.example.isamorodov.telegramcontest.data;
 
 import android.graphics.Color;
-import android.util.Log;
 
 import com.example.isamorodov.telegramcontest.struct.SegmentTree;
 import com.example.isamorodov.telegramcontest.utils.ColorUtilites;
@@ -40,7 +39,7 @@ public class ChartData {
                 Line l = new Line();
                 lines.add(l);
                 int len = a.length() - 1;
-                l.name = a.getString(0);
+                l.id = a.getString(0);
                 l.y = new int[len];
                 l.ySimple = new int[len];
                 for (int j = 0; j < len; j++) {
@@ -54,15 +53,17 @@ public class ChartData {
         }
 
         JSONObject colors = jsonObject.getJSONObject("colors");
+        JSONObject names = jsonObject.getJSONObject("names");
         for (int i = 0; i < lines.size(); i++) {
-            lines.get(i).color = Color.parseColor(colors.getString(lines.get(i).name));
+            lines.get(i).color = Color.parseColor(colors.getString(lines.get(i).id));
+            lines.get(i).name = names.getString(lines.get(i).id);
             lines.get(i).colorDark = ColorUtilites.blend(lines.get(i).color, Color.WHITE, 0.85f);
         }
     }
 
     private long DAY = 86400000L;
 
-    private void measure() {
+    protected void measure() {
         int n = x.length;
         long start = x[0];
         long end = x[n - 1];
@@ -104,7 +105,7 @@ public class ChartData {
             daysLookup[i] = formatter.format(new Date(start + (i * DAY)));
         }
 
-        oneDayPercentage = DAY / (float)(x[x.length - 1] - x[0]);
+        oneDayPercentage = DAY / (float) (x[x.length - 1] - x[0]);
     }
 
     public String getDayString(int i) {
@@ -197,10 +198,14 @@ public class ChartData {
         public int[] ySimple;
 
         public SegmentTree segmentTree;
+        public String id;
         public String name;
         public int maxValue = 0;
         public int color = Color.BLACK;
         public int colorDark = Color.WHITE;
 
+        public int findMax() {
+            return segmentTree.rMaxQ(0, y.length - 1);
+        }
     }
 }

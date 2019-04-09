@@ -1,6 +1,5 @@
 package com.example.isamorodov.telegramcontest.ui.components;
 
-import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -10,12 +9,9 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.Rect;
 import android.graphics.RectF;
-import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.Keep;
-import android.support.annotation.NonNull;
 
 import com.example.isamorodov.telegramcontest.R;
 import com.example.isamorodov.telegramcontest.utils.AndroidUtilities;
@@ -49,10 +45,10 @@ public class CheckBoxDrawable extends Drawable {
     public int color;
     private int checkColor;
 
-    CheckBox checkBox;
+    FlatCheckBox checkBox;
 
 
-    CheckBoxDrawable(CheckBox checkBox) {
+    CheckBoxDrawable(FlatCheckBox checkBox) {
         this.checkBox = checkBox;
         checkboxSquare_checkPaint.setStyle(Paint.Style.STROKE);
         checkboxSquare_checkPaint.setStrokeWidth(dp(2));

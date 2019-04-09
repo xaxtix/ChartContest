@@ -8,6 +8,7 @@ import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -22,7 +23,7 @@ import java.util.Date;
 import static com.example.isamorodov.telegramcontest.ui.chart.ChartHorizontalLinesData.s;
 import static com.example.isamorodov.telegramcontest.utils.AndroidUtilities.dp;
 
-public class LegendSignatureView extends LinearLayout {
+public class LegendSignatureView extends FrameLayout {
 
     LinearLayout content;
     Holder[] holdes;
@@ -50,7 +51,6 @@ public class LegendSignatureView extends LinearLayout {
     private void init() {
         LayoutInflater.from(getContext()).inflate(R.layout.legend_signature, this, true);
         setBackground(background = ContextCompat.getDrawable(getContext(), R.drawable.card_background));
-        setOrientation(VERTICAL);
         setPadding(dp(12), dp(8), dp(12), dp(8));
         content = findViewById(R.id.content);
 
@@ -66,16 +66,9 @@ public class LegendSignatureView extends LinearLayout {
     public void setSize(int n) {
         content.removeAllViews();
         holdes = new Holder[n];
-        for (int i = 0; i < n; i += 2) {
-            LinearLayout l = new LinearLayout(getContext());
-            l.setOrientation(LinearLayout.HORIZONTAL);
+        for (int i = 0; i < n; i++) {
             holdes[i] = new Holder();
-            l.addView(holdes[i].root);
-            if (i + 1 < n) {
-                holdes[i + 1] = new Holder();
-                l.addView(holdes[i + 1].root);
-            }
-            content.addView(l);
+            content.addView(holdes[i].root);
         }
     }
 
@@ -101,7 +94,7 @@ public class LegendSignatureView extends LinearLayout {
                 h.value.setText(formatWholeNumber(l.y[index]));
                 h.signature.setText(lines.get(j).line.name);
                 h.value.setTextColor(ThemeHelper.isDark() ? l.colorDark : l.color);
-                h.signature.setTextColor(ThemeHelper.isDark() ? l.colorDark : l.color);
+                h.signature.setTextColor(ThemeHelper.getColor(R.attr.text));
             }
             j++;
         }
@@ -139,13 +132,14 @@ public class LegendSignatureView extends LinearLayout {
 
         Holder() {
             root = new LinearLayout(getContext());
-            root.setPadding(dp(4), dp(4), dp(4), dp(4));
-            root.setOrientation(VERTICAL);
-            root.addView(value = new TextView(getContext()));
+            root.setPadding(dp(4), dp(2), dp(4), dp(2));
             root.addView(signature = new TextView(getContext()));
+            signature.getLayoutParams().width = dp(86);
+            root.addView(value = new TextView(getContext()));
+
 
             value.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            value.setTextSize(18);
+            value.setTextSize(15);
 
             signature.setTextSize(15);
         }

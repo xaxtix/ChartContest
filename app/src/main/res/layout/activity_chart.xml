@@ -14,30 +14,16 @@
         android:outlineProvider="bounds">
 
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/title"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/back"
-                android:layout_width="54dp"
-                android:layout_height="@dimen/actionBarSize"
-                android:background="@drawable/highlight_circle"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_back_24" />
-
-            <TextView
-                android:id="@+id/title"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif-medium"
-                android:gravity="center"
-                android:paddingStart="16dp"
-                android:textColor="@android:color/white"
-                android:textSize="20sp" />
-
-        </LinearLayout>
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/title"
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:textColor="@android:color/white"
+            android:textSize="20sp" />
 
 
         <ImageView
@@ -46,12 +32,75 @@
             android:layout_height="48dp"
             android:layout_gravity="center_vertical|end"
             android:background="@drawable/highlight_circle"
-            android:scaleType="centerInside"
             android:src="@drawable/ic_theme" />
     </FrameLayout>
 
-    <FrameLayout
-        android:id="@+id/content"
+    <com.example.isamorodov.telegramcontest.ui.ContentScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"></FrameLayout>
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/lnl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.example.isamorodov.telegramcontest.ui.BgView
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.fragments.ChartFragment
+                android:id="@+id/chart1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:elevation="1dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.BgView
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.fragments.ChartFragment
+                android:id="@+id/chart2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:elevation="1dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.BgView
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+
+            <com.example.isamorodov.telegramcontest.ui.fragments.ChartFragment
+                android:id="@+id/chart3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:elevation="1dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.BgView
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.fragments.ChartFragment
+                android:id="@+id/chart4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:elevation="1dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.BgView
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.fragments.ChartFragment
+                android:id="@+id/chart5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:elevation="1dp" />
+
+            <com.example.isamorodov.telegramcontest.ui.BgView
+                android:layout_width="match_parent"
+                android:layout_height="42dp" />
+
+
+        </LinearLayout>
+    </com.example.isamorodov.telegramcontest.ui.ContentScrollView>
 </LinearLayout>
