@@ -10,7 +10,16 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:textStyle="bold"
-        android:text="Chart 1"
+        android:textSize="15dp"
+        android:layout_gravity="start|center_vertical"/>
+
+    <TextView
+        android:id="@+id/back"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:textStyle="bold"
+        android:textSize="15dp"
         android:layout_gravity="start|center_vertical"/>
 
 
@@ -18,9 +27,20 @@
         android:id="@+id/date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         android:fontFamily="sans-serif-medium"
         tools:text="Chart 1"
+        android:textSize="14dp"
+        android:layout_gravity="end|center_vertical"/>
+
+    <TextView
+        android:id="@+id/dateTmp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="sans-serif-medium"
+        tools:text="Chart 1"
+        android:textSize="14dp"
         android:layout_gravity="end|center_vertical"/>
 
 </merge>

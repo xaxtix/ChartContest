@@ -1,9 +1,10 @@
 package com.example.isamorodov.telegramcontest.data;
 
 import android.graphics.Color;
+import android.util.LongSparseArray;
 
 import com.example.isamorodov.telegramcontest.struct.SegmentTree;
-import com.example.isamorodov.telegramcontest.utils.ColorUtilites;
+import com.example.isamorodov.telegramcontest.utils.ColorUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -12,6 +13,7 @@ import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 
 public class ChartData {
 
@@ -21,10 +23,25 @@ public class ChartData {
     public ArrayList<Line> lines = new ArrayList<>();
     public int maxValue = 0;
 
+    public LongSparseArray<ChartData> childCharts = new LongSparseArray<>();
+
     public float oneDayPercentage = 0f;
+    public float oneHourPercentage = 0f;
+
+    protected ChartData() {
+    }
+
+    protected long timeStep;
 
     public ChartData(JSONObject jsonObject) throws JSONException {
+        this(jsonObject, 86400000L);
+    }
+
+    public ChartData(JSONObject jsonObject, long timeStep) throws JSONException {
         JSONArray columns = jsonObject.getJSONArray("columns");
+
+        this.timeStep = timeStep;
+
 
         int n = columns.length();
         for (int i = 0; i < columns.length(); i++) {
@@ -57,11 +74,10 @@ public class ChartData {
         for (int i = 0; i < lines.size(); i++) {
             lines.get(i).color = Color.parseColor(colors.getString(lines.get(i).id));
             lines.get(i).name = names.getString(lines.get(i).id);
-            lines.get(i).colorDark = ColorUtilites.blend(lines.get(i).color, Color.WHITE, 0.85f);
+            lines.get(i).colorDark = ColorUtils.blend(lines.get(i).color, Color.WHITE, 0.85f);
         }
     }
 
-    private long DAY = 86400000L;
 
     protected void measure() {
         int n = x.length;
@@ -97,19 +113,20 @@ public class ChartData {
             }
         }
 
-
-        daysLookup = new String[(int) ((end - start) / DAY) + 10];
-        SimpleDateFormat formatter = new SimpleDateFormat("MMM d");
+        daysLookup = new String[(int) ((end - start) / timeStep) + 10];
+        SimpleDateFormat formatter;
+        if (timeStep < 86400000L) formatter = new SimpleDateFormat("HH:mm");
+        else formatter = new SimpleDateFormat("MMM d");
 
         for (int i = 0; i < daysLookup.length; i++) {
-            daysLookup[i] = formatter.format(new Date(start + (i * DAY)));
+            daysLookup[i] = formatter.format(new Date(start + (i * timeStep)));
         }
 
-        oneDayPercentage = DAY / (float) (x[x.length - 1] - x[0]);
+        oneDayPercentage = timeStep / (float) (x[x.length - 1] - x[0]);
     }
 
     public String getDayString(int i) {
-        return daysLookup[(int) ((x[i] - x[0]) / DAY)];
+        return daysLookup[(int) ((x[i] - x[0]) / timeStep)];
     }
 
     public int findStartIndex(float v) {
@@ -117,9 +134,11 @@ public class ChartData {
         int n = xPercentage.length;
         int left = 0;
         int right = n - 1;
-        int middle = (right + left) >> 1;
 
-        while (true) {
+
+        while (left <= right) {
+            int middle = (right + left) >> 1;
+
             if (v < xPercentage[middle] && (middle == 0 || v > xPercentage[middle - 1])) {
                 return middle;
             }
@@ -127,22 +146,21 @@ public class ChartData {
                 return middle;
             }
             if (v < xPercentage[middle]) {
-                right = middle;
-                middle = (right + left) >> 1;
-            }
-            if (v > xPercentage[middle]) {
-                left = middle;
-                middle = (right + left) >> 1;
+                right = middle - 1;
+            }else if (v > xPercentage[middle]) {
+                left = middle + 1;
             }
         }
+        return left;
     }
 
     public int findEndIndex(int left, float v) {
         int n = xPercentage.length;
         if (v == 1f) return n - 1;
         int right = n - 1;
-        int middle = (right + left) >> 1;
-        while (true) {
+
+        while (left <= right) {
+            int middle = (right + left) >> 1;
             if (v > xPercentage[middle] && (middle == n - 1 || v < xPercentage[middle + 1])) {
                 return middle;
             }
@@ -151,15 +169,14 @@ public class ChartData {
                 return middle;
             }
             if (v < xPercentage[middle]) {
-                right = middle;
-                middle = (right + left) >> 1;
-            }
-            if (v > xPercentage[middle]) {
-                left = middle;
-                middle = (right + left) >> 1;
+                right = middle - 1;
+            }else if (v > xPercentage[middle]) {
+                left = middle + 1;
             }
         }
+        return right;
     }
+
 
     public int findIndex(int left, int right, float v) {
 
@@ -168,13 +185,12 @@ public class ChartData {
         if (v <= xPercentage[left]) {
             return left;
         }
-
         if (v >= xPercentage[right]) {
             return right;
         }
 
-        int middle = (right + left) >> 1;
-        while (true) {
+        while (left <= right) {
+            int middle = (right + left) >> 1;
             if (v > xPercentage[middle] && (middle == n - 1 || v < xPercentage[middle + 1])) {
                 return middle;
             }
@@ -183,14 +199,12 @@ public class ChartData {
                 return middle;
             }
             if (v < xPercentage[middle]) {
-                right = middle;
-                middle = (right + left) >> 1;
-            }
-            if (v > xPercentage[middle]) {
-                left = middle;
-                middle = (right + left) >> 1;
+                right = middle - 1;
+            } else if (v > xPercentage[middle]) {
+                left = middle + 1;
             }
         }
+        return right;
     }
 
     public class Line {

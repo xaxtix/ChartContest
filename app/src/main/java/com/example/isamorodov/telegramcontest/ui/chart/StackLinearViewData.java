@@ -8,7 +8,7 @@ public class StackLinearViewData extends LineViewData {
 
     public StackLinearViewData(ChartData.Line line) {
         super(line);
-
         paint.setStyle(Paint.Style.FILL);
+        paint.setAntiAlias(false);
     }
 }

@@ -1,5 +1,7 @@
 package com.example.isamorodov.telegramcontest.ui.components;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -11,6 +13,7 @@ import android.graphics.Typeface;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.animation.BounceInterpolator;
 
 import com.example.isamorodov.telegramcontest.R;
 import com.example.isamorodov.telegramcontest.utils.AndroidUtilities;
@@ -107,6 +110,10 @@ public class FlatCheckBox extends View {
         if (!attached || !animate) {
             progress = enabled ? 1f : 0f;
         } else {
+            if(checkAnimator != null) {
+                checkAnimator.removeAllListeners();
+                checkAnimator.cancel();
+            }
             checkAnimator = ValueAnimator.ofFloat(progress, enabled ? 1 : 0);
             checkAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
@@ -199,5 +206,34 @@ public class FlatCheckBox extends View {
         canvas.restore();
 
 
+    }
+
+    public void denied() {
+        checkAnimator = ValueAnimator.ofFloat(progress, 1f,0.5f);
+        checkAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                progress = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+        checkAnimator.setDuration(300);
+        checkAnimator.start();
+        checkAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                checkAnimator = ValueAnimator.ofFloat(progress, 0.5f,1f);
+                checkAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        progress = (float) animation.getAnimatedValue();
+                        invalidate();
+                    }
+                });
+                checkAnimator.setDuration(300);
+                checkAnimator.start();
+            }
+        });
     }
 }

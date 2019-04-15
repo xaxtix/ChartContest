@@ -5,6 +5,8 @@ import android.graphics.Rect;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.util.Log;
 
+import com.example.isamorodov.telegramcontest.utils.AndroidUtilities;
+
 public class PickerDelegate {
 
     Listener view;
@@ -70,7 +72,7 @@ public class PickerDelegate {
         public void captured() {
             a = ValueAnimator.ofFloat(0, 1f);
             a.setDuration(600);
-            a.setInterpolator(new FastOutSlowInInterpolator());
+            a.setInterpolator(AndroidUtilities.INTERPOLATOR);
             a.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
@@ -155,19 +157,19 @@ public class PickerDelegate {
         float capturedEnd = d.end;
         int capturedX = d.x;
 
-
+         boolean notifyPicker = false;
         if (capturedState == CAPTURE_LEFT) {
             pickerStart = capturedStart - (capturedX - x) / (float) pickerWidth;
             if (pickerStart < 0f) pickerStart = 0f;
             if (pickerEnd - pickerStart < MIN_DIST) pickerStart = pickerEnd - MIN_DIST;
-            view.onPickerDataChanged();
+            notifyPicker = true;
         }
 
         if (capturedState == CAPTURE_RIGHT) {
             pickerEnd = capturedEnd - (capturedX - x) / (float) pickerWidth;
             if (pickerEnd > 1f) pickerEnd = 1f;
             if (pickerEnd - pickerStart < MIN_DIST) pickerEnd = pickerStart + MIN_DIST;
-            view.onPickerDataChanged();
+            notifyPicker = true;
         }
 
         if (capturedState == CAPTURE_MIDDLE) {
@@ -183,8 +185,9 @@ public class PickerDelegate {
                 pickerStart = 1f - (capturedEnd - capturedStart);
             }
 
-            view.onPickerDataChanged();
+            notifyPicker = true;
         }
+        if(notifyPicker) view.onPickerDataChanged();
     }
 
     public void uncapture(int pointerIndex) {

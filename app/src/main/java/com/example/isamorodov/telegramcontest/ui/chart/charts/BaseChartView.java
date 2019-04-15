@@ -12,30 +12,31 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.text.TextPaint;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
+import android.view.View;
 
 import com.example.isamorodov.telegramcontest.R;
 import com.example.isamorodov.telegramcontest.data.ChartData;
 import com.example.isamorodov.telegramcontest.ui.chart.ChartBottomSignatureData;
+import com.example.isamorodov.telegramcontest.ui.chart.ChartHeaderView;
 import com.example.isamorodov.telegramcontest.ui.chart.ChartHorizontalLinesData;
 import com.example.isamorodov.telegramcontest.ui.ContentScrollView;
 import com.example.isamorodov.telegramcontest.ui.chart.LegendSignatureView;
 import com.example.isamorodov.telegramcontest.ui.chart.LineViewData;
+import com.example.isamorodov.telegramcontest.ui.chart.TransitionParams;
 import com.example.isamorodov.telegramcontest.utils.ThemeHelper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import static com.example.isamorodov.telegramcontest.utils.AndroidUtilities.INTERPOLATOR;
 import static com.example.isamorodov.telegramcontest.utils.AndroidUtilities.dp;
 import static com.example.isamorodov.telegramcontest.utils.AndroidUtilities.dpFloat;
 import static com.example.isamorodov.telegramcontest.utils.DrawUtils.RoundedRect;
 
-public abstract class BaseChartView<T extends ChartData, L extends LineViewData> extends FrameLayout implements PickerDelegate.Listener {
+public abstract class BaseChartView<T extends ChartData, L extends LineViewData> extends View implements PickerDelegate.Listener {
 
     ArrayList<ChartHorizontalLinesData> horizontalLines = new ArrayList<>(10);
     ArrayList<ChartBottomSignatureData> bottomSignatureDate = new ArrayList<>(100);
@@ -52,7 +53,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
     public final static int BOTTOM_SIGNATURE_START_ALPHA = dp(10f);
     protected final static int PICKER_PADDING = dp(16f);
     private final static int PICKER_CAPTURE_WIDTH = dp(24);
-    private final static int LANDSCAPE_END_PADDING = dp(144);
+    private final static int LANDSCAPE_END_PADDING = dp(16);
     private final static int BOTTOM_SIGNATURE_OFFSET = dp(10);
     private final static int DP_10 = dp(10);
     private final static int DP_12 = dp(12);
@@ -61,23 +62,32 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
     private final static int DP_2 = dp(2);
     private final static int DP_1 = dp(1);
 
+    float signaturePaintAlpha;
+    float bottomSignaturePaintAlpha;
 
     protected final static boolean USE_LINES = true;//android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.P;
     protected final static boolean ANIMATE_PICKER_SIZES = android.os.Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP;
 
     int chartBottom;
-    float currentMaxHeight = 250;
+    public float currentMaxHeight = 250;
+    public float currentMinHeight = 0;
+
+    int animateToMaxHeight = 0;
+    int animateToMinHeight = 0;
+
+
     float thresholdMaxHeight = 0;
 
     int startXIndex;
     int endXIndex;
-    protected boolean canUpdate = true;
+    boolean invalidatePickerChart = true;
 
     boolean landscape = false;
 
+    public boolean enabled = true;
 
-    public boolean parentCanScrollVertically = false;
 
+    Paint emptyPaint = new Paint();
 
     Paint linePaint = new Paint();
     Paint selectedLinePaint = new Paint();
@@ -98,10 +108,10 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
     ValueAnimator alphaBottomAnimator;
     ValueAnimator pickerAnimator;
     ValueAnimator selectionAnimator;
-    int animateToHeight = 0;
+    boolean postTransition = false;
 
-    PickerDelegate pickerDelegate = new PickerDelegate(this);
-    ChartViewSizes viewSizes = new ChartViewSizes();
+    public PickerDelegate pickerDelegate = new PickerDelegate(this);
+    public ChartViewSizes viewSizes = new ChartViewSizes();
     T chartData;
 
     ChartBottomSignatureData currentBottomSignatures;
@@ -118,10 +128,66 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
     protected int selectedIndex = -1;
     protected float selectedCoordinate = -1;
 
-    protected LegendSignatureView legendSignatureView;
-    protected boolean legendShowing = false;
+    public LegendSignatureView legendSignatureView;
+    public boolean legendShowing = false;
 
-    protected float selectionA = 0f;
+    public float selectionA = 0f;
+
+    boolean superDraw = false;
+    boolean useAlphaSignature = false;
+
+    public int transitionMode = TRANSITION_MODE_NONE;
+    public TransitionParams transitionParams;
+
+    public final static int TRANSITION_MODE_CHILD = 1;
+    public final static int TRANSITION_MODE_PARENT = 2;
+    public final static int TRANSITION_MODE_NONE = 0;
+    private ValueAnimator.AnimatorUpdateListener pickerHeightUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator animation) {
+            pickerMaxHeight = (float) animation.getAnimatedValue();
+            invalidatePickerChart = true;
+            invalidate();
+        }
+    };
+    private ValueAnimator.AnimatorUpdateListener heightUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator animation) {
+            currentMaxHeight = ((float) animation.getAnimatedValue());
+            invalidate();
+        }
+    };
+
+    private ValueAnimator.AnimatorUpdateListener minHeightUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator animation) {
+            currentMinHeight = ((float) animation.getAnimatedValue());
+            invalidate();
+        }
+    };
+    private ValueAnimator.AnimatorUpdateListener selectionAnimatorListener = new ValueAnimator.AnimatorUpdateListener() {
+        @Override
+        public void onAnimationUpdate(ValueAnimator animation) {
+            selectionA = (float) animation.getAnimatedValue();
+            legendSignatureView.setAlpha(selectionA);
+            invalidate();
+        }
+    };
+    private Animator.AnimatorListener selectorAnimatorEndListener = new AnimatorListenerAdapter() {
+        @Override
+        public void onAnimationEnd(Animator animation) {
+            super.onAnimationEnd(animation);
+            if (!animateLegentTo) {
+                legendShowing = false;
+                legendSignatureView.setVisibility(GONE);
+                invalidate();
+            }
+
+            postTransition = false;
+
+        }
+    };
+    protected boolean useMinHeight = false;
 
     public BaseChartView(Context context) {
         super(context);
@@ -136,10 +202,10 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
     public BaseChartView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
-        horizontalLines.add(new ChartHorizontalLinesData(250));
+        horizontalLines.add(new ChartHorizontalLinesData(250, 0, useMinHeight));
     }
 
-    private void init() {
+    protected void init() {
         linePaint.setStrokeWidth(LINE_WIDTH);
         selectedLinePaint.setStrokeWidth(SELECTED_LINE_WIDTH);
 
@@ -155,11 +221,8 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         setLayerType(LAYER_TYPE_HARDWARE, null);
         setWillNotDraw(false);
 
-        legendSignatureView = new LegendSignatureView(getContext());
+        legendSignatureView = createLegendView();
 
-        addView(legendSignatureView, new LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        );
 
         legendSignatureView.setVisibility(GONE);
 
@@ -170,10 +233,24 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         updateColors();
     }
 
+    protected LegendSignatureView createLegendView() {
+        return new LegendSignatureView(getContext());
+    }
+
     public void updateColors() {
 
-        signaturePaint.setColor(ThemeHelper.getColor(R.attr.signature));
+        if (useAlphaSignature) {
+            signaturePaint.setColor(ThemeHelper.getColor(R.attr.signature_alpha));
+        } else {
+            signaturePaint.setColor(ThemeHelper.getColor(R.attr.signature));
+        }
+
         bottomSignaturePaint.setColor(ThemeHelper.getColor(R.attr.signature));
+
+        signaturePaintAlpha = signaturePaint.getAlpha() / 255f;
+        bottomSignaturePaintAlpha = bottomSignaturePaint.getAlpha() / 255f;
+
+
         linePaint.setColor(ThemeHelper.getColor(R.attr.hint_line));
         selectedLinePaint.setColor(ThemeHelper.getColor(R.attr.active_line));
         pickerSelectorPaint.setColor(ThemeHelper.getColor(R.attr.active_picker_chart));
@@ -188,10 +265,14 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
 
         if (legendShowing)
             legendSignatureView.setData(selectedIndex, chartData.x[selectedIndex], (ArrayList<LineViewData>) lines);
+
+        invalidatePickerChart = true;
+
     }
 
 
     int lastW = 0;
+    int lastH = 0;
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -204,18 +285,25 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         } else {
             setMeasuredDimension(
                     MeasureSpec.getSize(widthMeasureSpec),
-                    ContentScrollView.contentHeight - dp(52)
+                    ContentScrollView.contentHeight - dp(56)
             );
         }
 
 
-        if (getMeasuredWidth() != lastW) {
+        if (getMeasuredWidth() != lastW || getMeasuredHeight() != lastH) {
             lastW = getMeasuredWidth();
+            lastH = getMeasuredHeight();
             bottomChartBitmap = Bitmap.createBitmap(getMeasuredWidth() - (HORIZONTAL_PADDING << 1), viewSizes.pikerHeight, Bitmap.Config.ARGB_4444);
             bottomChartCanvas = new Canvas(bottomChartBitmap);
+
+            UiBitmapCache.getPickerMaskBitmap(viewSizes.pikerHeight, getMeasuredWidth() - HORIZONTAL_PADDING * 2);
             measureSizes();
         }
+
+        if (legendShowing)
+            moveLegend(viewSizes.chartFullWidth * (pickerDelegate.pickerStart) - HORIZONTAL_PADDING);
     }
+
 
     private void measureSizes() {
         if (getMeasuredHeight() <= 0 || getMeasuredWidth() <= 0) {
@@ -227,7 +315,6 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         viewSizes.chartWidth = viewSizes.chartEnd - viewSizes.chartStart;
         viewSizes.chartFullWidth = (viewSizes.chartWidth / (pickerDelegate.pickerEnd - pickerDelegate.pickerStart));
 
-        drawPickerChart();
         updateLineSignature();
         chartBottom = dp(100f);
         viewSizes.chartArea.set(viewSizes.chartStart - HORIZONTAL_PADDING, 0, viewSizes.chartEnd + HORIZONTAL_PADDING, getMeasuredHeight() - chartBottom);
@@ -240,35 +327,39 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
 
     private void measureHeightThreshold() {
         int chartHeight = getMeasuredHeight() - chartBottom;
-        if (animateToHeight == 0 || chartHeight == 0) return;
-        thresholdMaxHeight = ((float) animateToHeight / chartHeight) * SIGNATURE_TEXT_SIZE;
+        if (animateToMaxHeight == 0 || chartHeight == 0) return;
+        thresholdMaxHeight = ((float) animateToMaxHeight / chartHeight) * SIGNATURE_TEXT_SIZE;
     }
 
 
     protected void drawPickerChart() {
-        canUpdate = false;
+
     }
 
-    boolean superDraw = false;
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if(superDraw) {
-            canUpdate = true;
+        if (superDraw) {
             super.onDraw(canvas);
             return;
         }
+        int count = canvas.save();
+        canvas.clipRect(0, viewSizes.chartArea.top, getMeasuredWidth(), viewSizes.chartArea.bottom);
+
         drawBottomLine(canvas);
         tmpN = horizontalLines.size();
         for (tmpI = 0; tmpI < tmpN; tmpI++) {
             drawHorizontalLines(canvas, horizontalLines.get(tmpI));
         }
-        drawBottomSignature(canvas);
+
         drawChart(canvas);
+
+        canvas.restoreToCount(count);
+        drawBottomSignature(canvas);
+
         drawPicker(canvas);
         drawSelection(canvas);
 
-        canUpdate = true;
         super.onDraw(canvas);
     }
 
@@ -280,9 +371,17 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         tmpN = bottomSignatureDate.size();
 
 
+        float transitionAlpha = 1f;
+        if (transitionMode == TRANSITION_MODE_PARENT) {
+            transitionAlpha = 1f - transitionParams.progress;
+        } else if (transitionMode == TRANSITION_MODE_CHILD) {
+            transitionAlpha = transitionParams.progress;
+        }
+
         for (tmpI = 0; tmpI < tmpN; tmpI++) {
             int resultAlpha = bottomSignatureDate.get(tmpI).alpha;
             int step = bottomSignatureDate.get(tmpI).step;
+            if (step == 0) return;
 
             int start = startXIndex - bottomSignatureOffset;
             while (start % step != 0) {
@@ -310,12 +409,12 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                         xPointOffset <= viewSizes.chartWidth + HORIZONTAL_PADDING) {
                     if (xPointOffset < BOTTOM_SIGNATURE_START_ALPHA) {
                         float a = 1f - (BOTTOM_SIGNATURE_START_ALPHA - xPointOffset) / BOTTOM_SIGNATURE_START_ALPHA;
-                        bottomSignaturePaint.setAlpha((int) (resultAlpha * a));
+                        bottomSignaturePaint.setAlpha((int) (resultAlpha * a * bottomSignaturePaintAlpha * transitionAlpha));
                     } else if (xPointOffset > viewSizes.chartWidth) {
                         float a = 1f - (xPointOffset - viewSizes.chartWidth) / HORIZONTAL_PADDING;
-                        bottomSignaturePaint.setAlpha((int) (resultAlpha * a));
+                        bottomSignaturePaint.setAlpha((int) (resultAlpha * a * bottomSignaturePaintAlpha * transitionAlpha));
                     } else {
-                        bottomSignaturePaint.setAlpha(resultAlpha);
+                        bottomSignaturePaint.setAlpha((int) (resultAlpha * bottomSignaturePaintAlpha * transitionAlpha));
                     }
                     canvas.drawText(chartData.getDayString(i), xPoint, getMeasuredHeight() - chartBottom + BOTTOM_SIGNATURE_TEXT_HEIGHT, bottomSignaturePaint);
                 }
@@ -323,9 +422,17 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         }
     }
 
-    void drawBottomLine(Canvas canvas) {
-        linePaint.setAlpha((int) (255 * 0.1f));
-        signaturePaint.setAlpha(255);
+    protected void drawBottomLine(Canvas canvas) {
+
+        float transitionAlpha = 1f;
+        if (transitionMode == TRANSITION_MODE_PARENT) {
+            transitionAlpha = 1f - transitionParams.progress;
+        } else if (transitionMode == TRANSITION_MODE_CHILD) {
+            transitionAlpha = transitionParams.progress;
+        }
+
+        linePaint.setAlpha((int) (255 * 0.1f * transitionAlpha));
+        signaturePaint.setAlpha((int) (255 * signaturePaintAlpha * transitionAlpha));
         int textOffset = (int) (SIGNATURE_TEXT_HEIGHT - signaturePaint.getTextSize());
         int y = (getMeasuredHeight() - chartBottom);
         canvas.drawLine(
@@ -334,6 +441,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                 viewSizes.chartEnd,
                 y,
                 linePaint);
+        if (useMinHeight) return;
 
         canvas.drawText("0", HORIZONTAL_PADDING, y - textOffset, signaturePaint);
     }
@@ -357,7 +465,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         for (tmpI = 0; tmpI < tmpN; tmpI++) {
             LineViewData line = lines.get(tmpI);
             if (!line.enabled) continue;
-            float yPercentage = (float) line.line.y[selectedIndex] / currentMaxHeight;
+            float yPercentage = (line.line.y[selectedIndex] - currentMinHeight) / (currentMaxHeight - currentMinHeight);
             float yPoint = getMeasuredHeight() - chartBottom - (yPercentage) * (getMeasuredHeight() - chartBottom - SIGNATURE_TEXT_HEIGHT);
 
             line.selectionPaint.setAlpha(alpha);
@@ -374,13 +482,21 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
     protected void drawHorizontalLines(Canvas canvas, ChartHorizontalLinesData a) {
         int n = a.values.length;
 
-        linePaint.setAlpha((int) (a.alpha * 0.1f));
-        signaturePaint.setAlpha(a.alpha);
+        float transitionAlpha = 1f;
+        if (transitionMode == TRANSITION_MODE_PARENT) {
+            transitionAlpha = 1f - transitionParams.progress;
+        } else if (transitionMode == TRANSITION_MODE_CHILD) {
+            transitionAlpha = transitionParams.progress;
+        }
+        linePaint.setAlpha((int) (a.alpha * 0.1f * transitionAlpha));
+        signaturePaint.setAlpha((int) (a.alpha * signaturePaintAlpha * transitionAlpha));
         int chartHeight = getMeasuredHeight() - chartBottom - SIGNATURE_TEXT_HEIGHT;
 
         int textOffset = (int) (SIGNATURE_TEXT_HEIGHT - signaturePaint.getTextSize());
-        for (int i = 1; i < n; i++) {
-            int y = (int) ((getMeasuredHeight() - chartBottom) - chartHeight * (a.values[i] / currentMaxHeight));
+        for (int i = useMinHeight ? 0 : 1; i < n; i++) {
+
+
+            int y = (int) ((getMeasuredHeight() - chartBottom) - chartHeight * ((a.values[i] - currentMinHeight) / (currentMaxHeight - currentMinHeight)));
             canvas.drawLine(
                     viewSizes.chartStart,
                     y,
@@ -401,18 +517,67 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         int start = (int) (HORIZONTAL_PADDING + viewSizes.pickerWidth * pickerDelegate.pickerStart);
         int end = (int) (HORIZONTAL_PADDING + viewSizes.pickerWidth * pickerDelegate.pickerEnd);
 
+
+        if (transitionMode == TRANSITION_MODE_CHILD) {
+            int startParent = (int) (HORIZONTAL_PADDING + viewSizes.pickerWidth * transitionParams.pickerStartOut);
+            int endParent = (int) (HORIZONTAL_PADDING + viewSizes.pickerWidth * transitionParams.pickerEndOut);
+
+            start += (startParent - start) * (1f - transitionParams.progress);
+            end += (endParent - end) * (1f - transitionParams.progress);
+        }
+
         if (chartData != null) {
-            synchronized (bottomChartBitmap) {
+            if (invalidatePickerChart) {
+                drawPickerChart();
+                invalidatePickerChart = false;
+            }
+            if (transitionMode == TRANSITION_MODE_PARENT) {
+
+                float pY = top + (bottom - top) >> 1;
+                float pX = HORIZONTAL_PADDING + viewSizes.pickerWidth * transitionParams.xPercentage;
+
+                emptyPaint.setAlpha((int) ((1f - transitionParams.progress) * 255));
+
+                canvas.save();
+                canvas.clipRect(HORIZONTAL_PADDING, top, getMeasuredWidth() - HORIZONTAL_PADDING, bottom);
+                canvas.scale(1 + 2 * transitionParams.progress, 1f, pX, pY);
+                canvas.drawBitmap(bottomChartBitmap, HORIZONTAL_PADDING, getMeasuredHeight() - PICKER_PADDING - viewSizes.pikerHeight, emptyPaint);
+                canvas.restore();
+
+
+            } else if (transitionMode == TRANSITION_MODE_CHILD) {
+                float pY = top + (bottom - top) >> 1;
+                float pX = HORIZONTAL_PADDING + viewSizes.pickerWidth * transitionParams.xPercentage;
+
+                float dX = (transitionParams.xPercentage > 0.5f ? viewSizes.pickerWidth * transitionParams.xPercentage : viewSizes.pickerWidth * (1f - transitionParams.xPercentage)) * transitionParams.progress;
+
+                canvas.save();
+                canvas.clipRect(pX - dX, top, pX + dX, bottom);
+
+                emptyPaint.setAlpha((int) (transitionParams.progress * 255));
+                canvas.scale(transitionParams.progress, 1f, pX, pY);
+                canvas.drawBitmap(bottomChartBitmap, HORIZONTAL_PADDING, getMeasuredHeight() - PICKER_PADDING - viewSizes.pikerHeight, emptyPaint);
+                canvas.restore();
+
+            } else {
                 canvas.drawBitmap(bottomChartBitmap, HORIZONTAL_PADDING, getMeasuredHeight() - PICKER_PADDING - viewSizes.pikerHeight, null);
             }
+
+
         }
+
+
+        if (transitionMode == TRANSITION_MODE_PARENT) {
+            return;
+        }
+
 
         canvas.drawRect(HORIZONTAL_PADDING,
                 top,
-                start,
+                start + DP_12,
                 bottom, unactiveBottomChartPaint);
 
-        canvas.drawRect(end,
+        canvas.drawRect(end - DP_12,
                 top,
                 getMeasuredWidth() - HORIZONTAL_PADDING,
                 bottom, unactiveBottomChartPaint);
@@ -466,9 +631,9 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
             PickerDelegate.CapturesData rCap = pickerDelegate.getRightCaptured();
 
             if (lCap != null)
-                canvas.drawCircle(pickerRect.left + DP_2, cY, r * lCap.aValue - DP_2, ripplePaint);
+                canvas.drawCircle(pickerRect.left + DP_5, cY, r * lCap.aValue - DP_2, ripplePaint);
             if (rCap != null)
-                canvas.drawCircle(pickerRect.right - DP_2, cY, r * rCap.aValue - DP_2, ripplePaint);
+                canvas.drawCircle(pickerRect.right - DP_5, cY, r * rCap.aValue - DP_2, ripplePaint);
         }
 
         int cX = start;
@@ -486,22 +651,29 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                 cX + PICKER_CAPTURE_WIDTH,
                 bottom
         );
+
+        canvas.drawBitmap(
+                UiBitmapCache.getPickerMaskBitmap(viewSizes.pikerHeight, getMeasuredWidth() - HORIZONTAL_PADDING * 2),
+                HORIZONTAL_PADDING, getMeasuredHeight() - PICKER_PADDING - viewSizes.pikerHeight, emptyPaint);
+
     }
 
 
     long lastTime = 0;
 
-    private void setMaxValue(int newMaxHeight, boolean animated) {
-        setMaxValue(newMaxHeight, animated, false);
+    private void setMaxMinValue(int newMaxHeight, int newMinHeight, boolean animated) {
+        setMaxMinValue(newMaxHeight, newMinHeight, animated, false);
     }
 
-    private void setMaxValue(int newMaxHeight, boolean animated, boolean force) {
-        final ChartHorizontalLinesData newData = new ChartHorizontalLinesData(newMaxHeight);
-        newMaxHeight = newData.values[5];
-
-        if ((Math.abs(newMaxHeight - animateToHeight) < thresholdMaxHeight) || newMaxHeight == 0) {
-            return;
+    protected void setMaxMinValue(int newMaxHeight, int newMinHeight, boolean animated, boolean force) {
+        boolean heightChanged = true;
+        if ((Math.abs(ChartHorizontalLinesData.lookupHeight(newMaxHeight) - animateToMaxHeight) < thresholdMaxHeight) || newMaxHeight == 0) {
+            heightChanged = false;
         }
+
+        if (!heightChanged && newMaxHeight == animateToMinHeight) return;
+        final ChartHorizontalLinesData newData = createHorizontalLinesData(newMaxHeight, newMinHeight);
+        newMaxHeight = newData.values[5];
 
         long t = System.currentTimeMillis();
         //  debounce
@@ -511,7 +683,8 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
 
         lastTime = t;
 
-        animateToHeight = newMaxHeight;
+        animateToMaxHeight = newMaxHeight;
+        animateToMinHeight = newMinHeight;
         measureHeightThreshold();
 
         if (maxValueAnimator != null) {
@@ -525,6 +698,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
 
         if (!animated) {
             currentMaxHeight = newMaxHeight;
+            currentMinHeight = newMinHeight;
             horizontalLines.clear();
             horizontalLines.add(newData);
             newData.alpha = 255;
@@ -532,22 +706,19 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         }
 
 
-        if (horizontalLines.size() > 1) {
-
-        }
         horizontalLines.add(newData);
 
-
-        maxValueAnimator = createAnimator(currentMaxHeight, newMaxHeight, new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                currentMaxHeight = ((float) animation.getAnimatedValue());
-                invalidate();
-            }
-        });
+        maxValueAnimator = createAnimator(currentMaxHeight, newMaxHeight, heightUpdateListener);
         maxValueAnimator.start();
 
-        for (ChartHorizontalLinesData a : horizontalLines) {
+        if (useMinHeight) {
+            maxValueAnimator = createAnimator(currentMinHeight, newMinHeight, minHeightUpdateListener);
+            maxValueAnimator.start();
+        }
+
+        int n = horizontalLines.size();
+        for (int i = 0; i < n; i++) {
+            ChartHorizontalLinesData a = horizontalLines.get(i);
             if (a != newData) a.fixedAlpha = a.alpha;
         }
 
@@ -573,10 +744,14 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         alphaAnimator.start();
     }
 
+    protected ChartHorizontalLinesData createHorizontalLinesData(int newMaxHeight, int newMinHeight) {
+        return new ChartHorizontalLinesData(newMaxHeight, newMinHeight, useMinHeight);
+    }
+
     ValueAnimator createAnimator(float f1, float f2, ValueAnimator.AnimatorUpdateListener l) {
         ValueAnimator a = ValueAnimator.ofFloat(f1, f2);
         a.setDuration(ANIM_DURATION);
-        a.setInterpolator(new FastOutSlowInInterpolator());
+        a.setInterpolator(INTERPOLATOR);
         a.addUpdateListener(l);
         return a;
     }
@@ -587,6 +762,14 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (!enabled) {
+            pickerDelegate.uncapture(event.getActionIndex());
+            getParent().requestDisallowInterceptTouchEvent(false);
+            chartCaptured = false;
+            return false;
+        }
+
+
         int x = (int) event.getX(event.getActionIndex());
         int y = (int) event.getY(event.getActionIndex());
 
@@ -603,7 +786,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                     lastY = y;
                     chartCaptured = true;
                     getParent().requestDisallowInterceptTouchEvent(true);
-                    selectXOnChart(x);
+                    selectXOnChart(x, y);
                     return true;
                 }
                 return false;
@@ -623,19 +806,15 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                 }
 
                 if (chartCaptured) {
-
                     int dx = x - lastX;
                     int dy = y - lastY;
-
-
                     boolean disable = Math.abs(dx) > Math.abs(dy) || Math.abs(dy) < DP_5;
                     lastX = x;
                     lastY = y;
 
                     getParent().requestDisallowInterceptTouchEvent(disable);
-                    selectXOnChart(x);
+                    selectXOnChart(x, y);
                 }
-
 
                 return true;
             case MotionEvent.ACTION_POINTER_UP:
@@ -647,10 +826,15 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                 pickerDelegate.uncapture(event.getActionIndex());
                 getParent().requestDisallowInterceptTouchEvent(false);
                 chartCaptured = false;
+                onActionUp();
                 //   selectedIndex = -1;
                 //   legendSignatureView.setVisibility(GONE);
                 invalidate();
-                setMaxValue(findMaxValue(startXIndex, endXIndex), true, true);
+                int min = 0;
+                if (useMinHeight) min = findMinValue(startXIndex, endXIndex);
+                setMaxMinValue(
+                        findMaxValue(startXIndex, endXIndex), min,
+                        true, true);
                 return true;
 
 
@@ -659,7 +843,11 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         return false;
     }
 
-    private void selectXOnChart(int x) {
+    protected void onActionUp() {
+
+    }
+
+    protected void selectXOnChart(int x, int y) {
         if (chartData == null) return;
         float offset = viewSizes.chartFullWidth * (pickerDelegate.pickerStart) - HORIZONTAL_PADDING;
         float xP = (offset + x) / viewSizes.chartFullWidth;
@@ -682,41 +870,26 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         invalidate();
     }
 
-    private boolean animateLegentTo = false;
+    public boolean animateLegentTo = false;
 
-    private void animateLegend(boolean show) {
+    public void animateLegend(boolean show) {
+        moveLegend();
         if (animateLegentTo == show) return;
         animateLegentTo = show;
         if (selectionAnimator != null) {
             selectionAnimator.removeAllListeners();
             selectionAnimator.cancel();
         }
-        selectionAnimator = createAnimator(selectionA, show ? 1f : 0f, new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                selectionA = (float) animation.getAnimatedValue();
-                legendSignatureView.setAlpha(selectionA);
-                invalidate();
-            }
-        })
+        selectionAnimator = createAnimator(selectionA, show ? 1f : 0f, selectionAnimatorListener)
                 .setDuration(200);
 
-        if (!show) {
-            selectionAnimator.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    super.onAnimationEnd(animation);
-                    legendShowing = false;
-                    legendSignatureView.setVisibility(GONE);
-                    invalidate();
-                }
-            });
-        }
+        selectionAnimator.addListener(selectorAnimatorEndListener);
+
 
         selectionAnimator.start();
     }
 
-    private void moveLegend(float offset) {
+    public void moveLegend(float offset) {
         if (chartData == null || selectedIndex == -1 || !legendShowing) return;
         legendSignatureView.setData(selectedIndex, chartData.x[selectedIndex], (ArrayList<LineViewData>) lines);
         legendSignatureView.setVisibility(VISIBLE);
@@ -750,6 +923,19 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         return maxValue;
     }
 
+
+    public int findMinValue(int startXIndex, int endXIndex) {
+        int linesSize = lines.size();
+        int minValue = Integer.MAX_VALUE;
+        for (int j = 0; j < linesSize; j++) {
+            if (!lines.get(j).enabled) continue;
+            int lineMin = lines.get(j).line.segmentTree.rMinQ(startXIndex, endXIndex);
+            if (lineMin < minValue)
+                minValue = lineMin;
+        }
+        return minValue;
+    }
+
     public void setData(T chartData) {
         this.chartData = chartData;
         measureSizes();
@@ -761,12 +947,14 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         }
 
         updateIndexes();
-        setMaxValue(findMaxValue(startXIndex, endXIndex), false);
+        int min = useMinHeight ? findMinValue(startXIndex, endXIndex) : 0;
+        setMaxMinValue(findMaxValue(startXIndex, endXIndex), min,
+                false);
 
         pickerMaxHeight = 0;
         initPickerMaxHeight();
         legendSignatureView.setSize(lines.size());
-        if (bottomChartBitmap != null) drawPickerChart();
+        invalidatePickerChart = true;
         updateLineSignature();
     }
 
@@ -776,55 +964,19 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         }
     }
 
-    abstract L createLineViewData(ChartData.Line line);
+    public abstract L createLineViewData(ChartData.Line line);
 
-    public void onPickerDataChanged(){
+    public void onPickerDataChanged() {
         onPickerDataChanged(false);
     }
+
     public void onPickerDataChanged(boolean force) {
         if (chartData == null) return;
         viewSizes.chartFullWidth = (viewSizes.chartWidth / (pickerDelegate.pickerEnd - pickerDelegate.pickerStart));
 
         updateIndexes();
-        setMaxValue(findMaxValue(startXIndex, endXIndex), true,force);
-
-        tmpN = lines.size();
-        for (tmpI = 0; tmpI < tmpN; tmpI++) {
-            final LineViewData lineViewData = lines.get(tmpI);
-            if (lineViewData.enabled && lineViewData.alpha != 255) {
-                if (lineViewData.animatorIn != null && lineViewData.animatorIn.isRunning()) {
-                    continue;
-                }
-                if (lineViewData.animatorOut != null) lineViewData.animatorOut.cancel();
-                lineViewData.animatorIn = createAnimator(lineViewData.alpha, 255, new ValueAnimator.AnimatorUpdateListener() {
-                    @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
-                        float a = ((float) animation.getAnimatedValue());
-                        lineViewData.alpha = (int) a;
-                        if (bottomChartCanvas != null && canUpdate) drawPickerChart();
-                        invalidate();
-                    }
-                });
-                lineViewData.animatorIn.start();
-            }
-
-            if (!lineViewData.enabled && lineViewData.alpha != 0) {
-                if (lineViewData.animatorOut != null && lineViewData.animatorOut.isRunning()) {
-                    continue;
-                }
-                if (lineViewData.animatorIn != null) lineViewData.animatorIn.cancel();
-                lineViewData.animatorOut = createAnimator(lineViewData.alpha, 0, new ValueAnimator.AnimatorUpdateListener() {
-                    @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
-                        float a = ((float) animation.getAnimatedValue());
-                        lineViewData.alpha = (int) a;
-                        if (bottomChartCanvas != null && canUpdate) drawPickerChart();
-                        invalidate();
-                    }
-                });
-                lineViewData.animatorOut.start();
-            }
-        }
+        int min = useMinHeight ? findMinValue(startXIndex, endXIndex) : 0;
+        setMaxMinValue(findMaxValue(startXIndex, endXIndex), min, true, force);
 
         if (legendShowing && !force) {
             animateLegend(false);
@@ -833,7 +985,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         invalidate();
     }
 
-    private void updateIndexes() {
+    protected void updateIndexes() {
         if (chartData == null) return;
         startXIndex = chartData.findStartIndex(Math.max(
                 pickerDelegate.pickerStart, 0f
@@ -841,6 +993,8 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         endXIndex = chartData.findEndIndex(startXIndex, Math.min(
                 pickerDelegate.pickerEnd, 1f
         ));
+        if (chartHeaderView != null)
+            chartHeaderView.setDates(chartData.x[startXIndex], chartData.x[endXIndex]);
         updateLineSignature();
     }
 
@@ -891,7 +1045,9 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
             currentBottomSignatures = data;
 
 
-            for (ChartBottomSignatureData a : bottomSignatureDate) {
+            tmpN = bottomSignatureDate.size();
+            for (int i = 0; i < tmpN; i++) {
+                ChartBottomSignatureData a = bottomSignatureDate.get(i);
                 a.fixedAlpha = a.alpha;
             }
 
@@ -910,7 +1066,7 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
                     }
                     invalidate();
                 }
-            });
+            }).setDuration(200);
             alphaBottomAnimator.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
@@ -927,8 +1083,47 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
 
     public void onCheckChanged() {
         onPickerDataChanged(true);
+        tmpN = lines.size();
+        for (tmpI = 0; tmpI < tmpN; tmpI++) {
+            final LineViewData lineViewData = lines.get(tmpI);
+            if (lineViewData.enabled && lineViewData.alpha != 255) {
+                if (lineViewData.animatorIn != null && lineViewData.animatorIn.isRunning()) {
+                    continue;
+                }
+                if (lineViewData.animatorOut != null) lineViewData.animatorOut.cancel();
+                lineViewData.animatorIn = createAnimator(lineViewData.alpha, 255, new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        float a = ((float) animation.getAnimatedValue());
+                        lineViewData.alpha = (int) a;
+                        invalidatePickerChart = true;
+                        invalidate();
+                    }
+                });
+                lineViewData.animatorIn.start();
+            }
+
+            if (!lineViewData.enabled && lineViewData.alpha != 0) {
+                if (lineViewData.animatorOut != null && lineViewData.animatorOut.isRunning()) {
+                    continue;
+                }
+                if (lineViewData.animatorIn != null) lineViewData.animatorIn.cancel();
+                lineViewData.animatorOut = createAnimator(lineViewData.alpha, 0, new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        float a = ((float) animation.getAnimatedValue());
+                        lineViewData.alpha = (int) a;
+                        invalidatePickerChart = true;
+                        invalidate();
+                    }
+                });
+                lineViewData.animatorOut.start();
+            }
+        }
+
         updateBottomMaxHeight();
-        if (legendShowing) legendSignatureView.setData(selectedIndex, chartData.x[selectedIndex], (ArrayList<LineViewData>) lines);
+        if (legendShowing)
+            legendSignatureView.setData(selectedIndex, chartData.x[selectedIndex], (ArrayList<LineViewData>) lines);
     }
 
     protected void updateBottomMaxHeight() {
@@ -942,17 +1137,9 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
             animatedToPickerMaxHeight = max;
             if (pickerAnimator != null) pickerAnimator.cancel();
 
-            pickerAnimator = createAnimator(pickerMaxHeight, animatedToPickerMaxHeight, new ValueAnimator.AnimatorUpdateListener() {
-                @Override
-                public void onAnimationUpdate(ValueAnimator animation) {
-                    pickerMaxHeight = (float) animation.getAnimatedValue();
-                    if (bottomChartCanvas != null && canUpdate) drawPickerChart();
-                    invalidate();
-                }
-            });
+            pickerAnimator = createAnimator(pickerMaxHeight, animatedToPickerMaxHeight, pickerHeightUpdateListener);
             pickerAnimator.start();
         }
-
 
     }
 
@@ -987,15 +1174,80 @@ public abstract class BaseChartView<T extends ChartData, L extends LineViewData>
         if (lines != null) {
             int n = lines.size();
             boolean[] bArray = savedInstanceState.getBooleanArray("chart_line_enabled");
-            if (bArray != null) {
+            if (bArray != null && bArray.length > 0) {
                 for (int i = 0; i < n; i++) {
                     lines.get(i).enabled = bArray[i];
                     lines.get(i).alpha = bArray[i] ? 255 : 0;
                 }
             }
+            onCheckChanged();
         }
 
         updateIndexes();
-        setMaxValue(findMaxValue(startXIndex, endXIndex), false);
+        int min = useMinHeight ? findMinValue(startXIndex, endXIndex) : 0;
+        setMaxMinValue(findMaxValue(startXIndex, endXIndex), min, false);
+    }
+
+    ChartHeaderView chartHeaderView;
+
+    public void setHeader(ChartHeaderView chartHeaderView) {
+        this.chartHeaderView = chartHeaderView;
+    }
+
+    public long getSelectedDate() {
+        return chartData.x[selectedIndex];
+    }
+
+    public void clearSelection() {
+        selectedIndex = -1;
+        legendShowing = false;
+        animateLegentTo = false;
+        legendSignatureView.setVisibility(GONE);
+        selectionA = 0f;
+    }
+
+    public void selectDate(long activeZoom) {
+        selectedIndex = Arrays.binarySearch(chartData.x, activeZoom);
+        legendShowing = true;
+        legendSignatureView.setVisibility(VISIBLE);
+        selectionA = 1f;
+        moveLegend(viewSizes.chartFullWidth * (pickerDelegate.pickerStart) - HORIZONTAL_PADDING);
+    }
+
+    public long getStartDate() {
+        return chartData.x[startXIndex];
+    }
+
+    public long getEndDate() {
+        return chartData.x[endXIndex];
+    }
+
+    public void updatePicker(ChartData chartData, long d) {
+        int n = chartData.x.length;
+        long startOfDay = d - d % 86400000L;
+        long endOfDay = startOfDay + 86400000L - 1;
+        int startIndex = 0;
+        int endIndex = 0;
+
+        for (int i = 0; i < n; i++) {
+            if (startOfDay > chartData.x[i]) startIndex = i;
+            if (endOfDay > chartData.x[i]) endIndex = i;
+        }
+        pickerDelegate.pickerStart = chartData.xPercentage[startIndex];
+        pickerDelegate.pickerEnd = chartData.xPercentage[endIndex];
+    }
+
+    public void updatePicker5m() {
+        pickerDelegate.pickerStart = 0.4f;
+        pickerDelegate.pickerEnd = 0.6f;
+    }
+
+    public void moveLegend() {
+        moveLegend(viewSizes.chartFullWidth * (pickerDelegate.pickerStart) - HORIZONTAL_PADDING);
+    }
+
+    @Override
+    public void requestLayout() {
+        super.requestLayout();
     }
 }

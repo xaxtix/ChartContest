@@ -28,6 +28,7 @@ public class SegmentTree {
 
         if (size == 1) {
             heap[v].sum = array[from];
+            heap[v].max = array[from];
             heap[v].min = array[from];
         } else {
             //Build childs
@@ -35,8 +36,9 @@ public class SegmentTree {
             build(2 * v + 1, from + size / 2, size - size / 2);
 
             heap[v].sum = heap[2 * v].sum + heap[2 * v + 1].sum;
-            //min = min of the children
-            heap[v].min = Math.max(heap[2 * v].min, heap[2 * v + 1].min);
+            //max = max of the children
+            heap[v].max = Math.max(heap[2 * v].max, heap[2 * v + 1].max);
+            heap[v].min = Math.min(heap[2 * v].min, heap[2 * v + 1].min);
         }
     }
 
@@ -52,7 +54,7 @@ public class SegmentTree {
         }
 
         if (contains(from, to, n.from, n.to)) {
-            return heap[v].min;
+            return heap[v].max;
         }
 
         if (intersects(from, to, n.from, n.to)) {
@@ -64,6 +66,32 @@ public class SegmentTree {
         }
 
         return 0;
+    }
+
+    public int rMinQ(int from, int to) {
+        return rMinQ(1, from, to);
+    }
+
+    private int rMinQ(int v, int from, int to) {
+        Node n = heap[v];
+        //If you did a range update that contained this node, you can infer the Min value without going down the tree
+        if (n.pendingVal != null && contains(n.from, n.to, from, to)) {
+            return n.pendingVal;
+        }
+
+        if (contains(from, to, n.from, n.to)) {
+            return heap[v].min;
+        }
+
+        if (intersects(from, to, n.from, n.to)) {
+            propagate(v);
+            int leftMin = rMinQ(2 * v, from, to);
+            int rightMin = rMinQ(2 * v + 1, from, to);
+
+            return Math.min(leftMin, rightMin);
+        }
+
+        return Integer.MAX_VALUE;
     }
 
     //Propagate temporal values to children
@@ -81,6 +109,7 @@ public class SegmentTree {
     private void change(Node n, int value) {
         n.pendingVal = value;
         n.sum = n.size() * value;
+        n.max = value;
         n.min = value;
         array[n.from] = value;
 
@@ -100,6 +129,7 @@ public class SegmentTree {
     //The Node class represents a partition range of the array.
     static class Node {
         int sum;
+        int max;
         int min;
         //Here We store the value that will be propagated lazily
         Integer pendingVal = null;

@@ -1,19 +1,20 @@
 package com.example.isamorodov.telegramcontest.ui.chart.charts;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.util.AttributeSet;
 
 import com.example.isamorodov.telegramcontest.data.ChartData;
+import com.example.isamorodov.telegramcontest.ui.chart.ChartHorizontalLinesData;
 import com.example.isamorodov.telegramcontest.ui.chart.LineViewData;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-
-public class LinearChartView extends BaseChartView<ChartData,LineViewData> {
+public class LinearChartView extends BaseChartView<ChartData, LineViewData> {
     public LinearChartView(Context context) {
         super(context);
     }
@@ -24,6 +25,13 @@ public class LinearChartView extends BaseChartView<ChartData,LineViewData> {
 
     public LinearChartView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+    }
+
+    @Override
+    protected void init() {
+        useMinHeight = true;
+        super.init();
+
     }
 
     @Override
@@ -48,7 +56,7 @@ public class LinearChartView extends BaseChartView<ChartData,LineViewData> {
                 for (int i = startXIndex; i <= endXIndex; i++) {
                     if (y[i] < 0) continue;
                     float xPoint = chartData.xPercentage[i] * fullWidth - offset;
-                    float yPercentage = (float) y[i] / currentMaxHeight;
+                    float yPercentage = ((float) y[i] - currentMinHeight) / (currentMaxHeight - currentMinHeight);
                     float yPoint = getMeasuredHeight() - chartBottom - (yPercentage) * (getMeasuredHeight() - chartBottom - SIGNATURE_TEXT_HEIGHT);
 
                     if (USE_LINES) {
@@ -71,9 +79,37 @@ public class LinearChartView extends BaseChartView<ChartData,LineViewData> {
                     }
                 }
 
-                line.paint.setAlpha(line.alpha);
+                canvas.save();
+                float transitionAlpha = 1f;
+                if (transitionMode == TRANSITION_MODE_PARENT) {
+
+                    transitionAlpha = transitionParams.progress > 0.5f ? 0 : 1f - transitionParams.progress * 2f;
+
+                    canvas.scale(
+                            1 + 2 * transitionParams.progress, 1f,
+                            transitionParams.pX, transitionParams.pY
+                    );
+
+                } else if (transitionMode == TRANSITION_MODE_CHILD) {
+
+                    transitionAlpha = transitionParams.progress < 0.3f ? 0 : transitionParams.progress;
+
+                    canvas.save();
+                    canvas.scale(
+                            transitionParams.progress, transitionParams.needScaleY ? transitionParams.progress : 1f,
+                            transitionParams.pX, transitionParams.pY
+                    );
+                }
+                line.paint.setAlpha((int) (line.alpha * transitionAlpha));
+                if(endXIndex - startXIndex > 100){
+                    line.paint.setStrokeCap(Paint.Cap.SQUARE);
+                } else {
+                    line.paint.setStrokeCap(Paint.Cap.ROUND);
+                }
                 if (!USE_LINES) canvas.drawPath(line.chartPath, line.paint);
                 else canvas.drawLines(line.linesPath, 0, j, line.paint);
+
+                canvas.restore();
             }
         }
     }
@@ -84,7 +120,7 @@ public class LinearChartView extends BaseChartView<ChartData,LineViewData> {
         int bottom = getMeasuredHeight() - PICKER_PADDING;
         int top = getMeasuredHeight() - viewSizes.pikerHeight - PICKER_PADDING;
 
-        bottomChartCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        bottomChartBitmap.eraseColor(0);
         int nl = lines.size();
 
         if (chartData != null) {
@@ -141,8 +177,9 @@ public class LinearChartView extends BaseChartView<ChartData,LineViewData> {
         }
     }
 
+
     @Override
-    LineViewData createLineViewData(ChartData.Line line) {
+    public LineViewData createLineViewData(ChartData.Line line) {
         return new LineViewData(line);
     }
 }

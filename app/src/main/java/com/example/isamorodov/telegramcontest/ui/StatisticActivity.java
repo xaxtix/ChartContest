@@ -1,5 +1,7 @@
 package com.example.isamorodov.telegramcontest.ui;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
@@ -10,13 +12,14 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.example.isamorodov.telegramcontest.R;
-import com.example.isamorodov.telegramcontest.TelegramContestApp;
 import com.example.isamorodov.telegramcontest.data.ChartData;
 import com.example.isamorodov.telegramcontest.data.ChartProvider;
 import com.example.isamorodov.telegramcontest.data.DataController;
+import com.example.isamorodov.telegramcontest.ui.chart.charts.UiBitmapCache;
 import com.example.isamorodov.telegramcontest.ui.fragments.ChartFragment;
 import com.example.isamorodov.telegramcontest.utils.ThemeHelper;
 
@@ -28,8 +31,7 @@ public class StatisticActivity extends Activity {
     private FrameLayout toolbar;
 
     private TextView title;
-    private View back;
-    private ChartProvider provider = new ChartProvider();
+    private ChartProvider provider = ChartProvider.INSTANCE;
     private ImageView themeIcon;
 
     private ChartFragment chart1;
@@ -37,6 +39,7 @@ public class StatisticActivity extends Activity {
     private ChartFragment chart3;
     private ChartFragment chart4;
     private ChartFragment chart5;
+    private ScrollView scrollView;
     private ViewGroup contentInsideScroll;
 
     @Override
@@ -44,6 +47,7 @@ public class StatisticActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chart);
 
+        scrollView = findViewById(R.id.scroll);
         toolbar = findViewById(R.id.toolbar);
         title = toolbar.findViewById(R.id.title);
         contentInsideScroll = findViewById(R.id.lnl);
@@ -59,8 +63,9 @@ public class StatisticActivity extends Activity {
         });
 
 
+        scrollView.setVisibility(View.GONE);
         if (DataController.Instanse.chartsList == null) {
-            provider.getData(TelegramContestApp.context, new ChartProvider.DataListener() {
+            provider.setDataListener(new ChartProvider.DataListener() {
                 @Override
                 public void onDataReceive(ArrayList<ChartData> data) {
                     DataController.Instanse.chartsList = data;
@@ -70,31 +75,71 @@ public class StatisticActivity extends Activity {
                     chart4.onDataLoaded();
                     chart5.onDataLoaded();
 
+                    scrollView.setVisibility(View.VISIBLE);
+                    scrollView.setAlpha(0);
+                    scrollView.animate().alpha(1f).setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+
+                            super.onAnimationEnd(animation);
+                            getWindow().setBackgroundDrawable(null);
+                        }
+                    }).setDuration(400).start();
                 }
             });
+        } else {
+            scrollView.setVisibility(View.VISIBLE);
+            getWindow().setBackgroundDrawable(null);
         }
 
         chart1 = findViewById(R.id.chart1);
-        chart1.onCreateView(this, 0);
+        chart1.onCreateView(this, 0, savedInstanceState == null ? null : savedInstanceState.getBundle("c0"));
 
         chart2 = findViewById(R.id.chart2);
-        chart2.onCreateView(this, 1);
+        chart2.onCreateView(this, 1, savedInstanceState == null ? null : savedInstanceState.getBundle("c1"));
 
         chart3 = findViewById(R.id.chart3);
-        chart3.onCreateView(this, 2);
+        chart3.onCreateView(this, 2, savedInstanceState == null ? null : savedInstanceState.getBundle("c2"));
 
         chart4 = findViewById(R.id.chart4);
-        chart4.onCreateView(this, 3);
+        chart4.onCreateView(this, 3, savedInstanceState == null ? null : savedInstanceState.getBundle("c3"));
 
         chart5 = findViewById(R.id.chart5);
-        chart5.onCreateView(this, 4);
+        chart5.onCreateView(this, 4, savedInstanceState == null ? null : savedInstanceState.getBundle("c4"));
 
         recolor();
     }
 
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Bundle b = new Bundle();
+        chart1.onSaveInstanceState(b);
+        outState.putBundle("c0", b);
+
+        b = new Bundle();
+        chart2.onSaveInstanceState(b);
+        outState.putBundle("c1", b);
+
+        b = new Bundle();
+        chart3.onSaveInstanceState(b);
+        outState.putBundle("c2", b);
+
+        b = new Bundle();
+        chart4.onSaveInstanceState(b);
+        outState.putBundle("c3", b);
+
+        b = new Bundle();
+        chart5.onSaveInstanceState(b);
+        outState.putBundle("c4", b);
+
+
+    }
+
     private void recolor() {
         Window window = getWindow();
+        UiBitmapCache.invalidate();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -111,7 +156,7 @@ public class StatisticActivity extends Activity {
 
         toolbar.setBackgroundColor(ThemeHelper.getColor(R.attr.primary));
         title.setTextColor(ThemeHelper.getColor(R.attr.text));
-        themeIcon.setColorFilter(ThemeHelper.getColor(R.attr.text));
+        themeIcon.setColorFilter(ThemeHelper.getColor(R.attr.night_icon_color));
 
 
         chart1.recolor();
@@ -124,7 +169,6 @@ public class StatisticActivity extends Activity {
             contentInsideScroll.getChildAt(i).invalidate();
         }
 
-        getWindow().setBackgroundDrawable(null);
-
+        if( scrollView.getVisibility() ==View.VISIBLE) getWindow().setBackgroundDrawable(null);
     }
 }

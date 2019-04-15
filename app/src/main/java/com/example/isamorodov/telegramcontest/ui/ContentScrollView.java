@@ -28,7 +28,8 @@ public class ContentScrollView extends ScrollView {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if(MeasureSpec.getSize(heightMeasureSpec) > 0) contentHeight = MeasureSpec.getSize(heightMeasureSpec);
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        contentHeight = getMeasuredHeight();
+
     }
 }

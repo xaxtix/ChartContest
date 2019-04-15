@@ -1,6 +1,7 @@
 package com.example.isamorodov.telegramcontest.data;
 
 import com.example.isamorodov.telegramcontest.struct.SegmentTree;
+import com.example.isamorodov.telegramcontest.utils.ColorUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,9 +11,18 @@ public class StackBarChartData extends ChartData {
     public int[] ySum;
     public SegmentTree ySumSegmentTree;
 
+
+    public StackBarChartData(JSONObject jsonObject, long timeStep) throws JSONException {
+        super(jsonObject, timeStep);
+        init();
+    }
+
     public StackBarChartData(JSONObject jsonObject) throws JSONException {
         super(jsonObject);
+        init();
+    }
 
+    public void init() {
         int n = lines.get(0).y.length;
         int k = lines.size();
 

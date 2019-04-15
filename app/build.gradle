@@ -1,13 +1,21 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        config {
+            keyAlias 'xaxtix'
+            keyPassword 'S332578r'
+            storeFile file('/Users/i.samorodov/key')
+            storePassword 'S332578r'
+        }
+    }
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.example.isamorodov.telegramcontest"
         minSdkVersion 19
         targetSdkVersion 28
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "2.0"
         resConfigs "en"
     }
     buildTypes {
@@ -22,4 +30,5 @@ android {
 dependencies {
     implementation 'com.android.support:support-compat:28.0.0'
     implementation 'com.android.support:support-core-ui:28.0.0'
+    
 }

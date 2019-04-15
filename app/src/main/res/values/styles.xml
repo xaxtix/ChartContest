@@ -2,6 +2,7 @@
     <attr name="primary" format="color|reference" />
     <attr name="primary_dark" format="color|reference" />
     <attr name="signature" format="color|reference" />
+    <attr name="signature_alpha" format="color|reference" />
     <attr name="hint_line" format="color|reference" />
     <attr name="active_line" format="color|reference" />
     <attr name="inactive_picker_chart" format="color|reference" />
@@ -12,6 +13,10 @@
     <attr name="popup_background" format="color|reference" />
     <attr name="ripple" format="color|reference" />
     <attr name="checkbox_inactive" format="color|reference" />
+    <attr name="back_zoom_color" format="color|reference" />
+    <attr name="night_icon_color" format="color|reference" />
+    <attr name="chevron_color" format="color|reference" />
+    <attr name="highlight_color" format="color|reference" />
 
     <color name="window_background_light">#F0F0F0</color>
     <color name="window_background_dark">#151E27</color>
@@ -22,7 +27,8 @@
         <item name="android:windowNoTitle">true</item>
         <item name="primary_dark">#FFFFFF</item>
         <item name="primary">#FFFFFF</item>
-        <item name="signature">#95A2AA</item>
+        <item name="signature">#7f252529</item>
+        <item name="signature_alpha">#7f252529</item>
         <item name="hint_line">#182D3B</item>
         <item name="active_line">#bcbcbc</item>
         <item name="inactive_picker_chart">#99e2eef9</item>
@@ -32,8 +38,12 @@
         <item name="text">#101010</item>
         <item name="popup_background">#FFF</item>
         <item name="ripple">#2c7e9db7</item>
+        <item name="back_zoom_color">#108BE3</item>
         <item name="android:windowBackground">@color/window_background_light</item>
         <item name="checkbox_inactive">#BDBDBD</item>
+        <item name="night_icon_color">#8E8E93</item>
+        <item name="chevron_color">#D2D5D7</item>
+        <item name="highlight_color">#20ececec</item>
     </style>
 
 
@@ -43,7 +53,8 @@
         <item name="android:windowNoTitle">true</item>
         <item name="primary_dark">#242F3E</item>
         <item name="primary">#242F3E</item>
-        <item name="signature">#506372</item>
+        <item name="signature">#b7a3b1c2</item>
+        <item name="signature_alpha">#8bffffff</item>
         <item name="hint_line">#FFFFFF</item>
         <item name="active_line">#293648</item>
         <item name="inactive_picker_chart">#d8313D4C</item>
@@ -55,6 +66,10 @@
         <item name="android:windowBackground">@color/window_background_dark</item>
         <item name="text">#ececec</item>
         <item name="checkbox_inactive">#9B9B9B</item>
+        <item name="back_zoom_color">#46AAEE</item>
+        <item name="night_icon_color">#ececec</item>
+        <item name="chevron_color">#767C85</item>
+        <item name="highlight_color">#86ffffff</item>
     </style>
 
 

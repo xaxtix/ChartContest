@@ -4,7 +4,7 @@ import android.graphics.Rect;
 
 import static com.example.isamorodov.telegramcontest.utils.AndroidUtilities.dp;
 
-class ChartViewSizes {
+public class ChartViewSizes {
 
     public int pikerHeight = dp(46);
     public int pickerWidth;

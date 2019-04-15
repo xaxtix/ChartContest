@@ -9,6 +9,10 @@ public class DoubleLinearChartData extends ChartData {
     public float[] linesK;
 
 
+    public DoubleLinearChartData(JSONObject jsonObject,long t) throws JSONException {
+        super(jsonObject,t);
+    }
+
     public DoubleLinearChartData(JSONObject jsonObject) throws JSONException {
         super(jsonObject);
     }

@@ -2,25 +2,29 @@ package com.example.isamorodov.telegramcontest.ui.chart.charts;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.support.annotation.NonNull;
 
 import com.example.isamorodov.telegramcontest.data.ChartData;
 import com.example.isamorodov.telegramcontest.data.StackLinearChartData;
-import com.example.isamorodov.telegramcontest.ui.chart.ChartHeaderView;
 import com.example.isamorodov.telegramcontest.ui.chart.LineViewData;
 import com.example.isamorodov.telegramcontest.ui.chart.StackLinearViewData;
 
-public class StackLinearChartView extends BaseChartView<StackLinearChartData, StackLinearViewData> {
+public class StackLinearChartView<T extends StackLinearViewData> extends BaseChartView<StackLinearChartData, T> {
 
     public StackLinearChartView(@NonNull Context context) {
         super(context);
         superDraw = true;
+        useAlphaSignature = true;
     }
 
     @Override
-    StackLinearViewData createLineViewData(ChartData.Line line) {
-        return new StackLinearViewData(line);
+    public T createLineViewData(ChartData.Line line) {
+        return (T) new StackLinearViewData(line);
     }
+
+    Path ovalPath = new Path();
 
     @Override
     protected void drawChart(Canvas canvas) {
@@ -32,6 +36,40 @@ public class StackLinearChartView extends BaseChartView<StackLinearChartData, St
                 lines.get(k).chartPath.reset();
             }
 
+            canvas.save();
+
+            int transitionAlpha = 255;
+            if (transitionMode == TRANSITION_MODE_PARENT) {
+
+                transitionAlpha = (int) ((1f - transitionParams.progress) * 255);
+                ovalPath.reset();
+
+                int radiusStart = (viewSizes.chartArea.width() > viewSizes.chartArea.height() ? viewSizes.chartArea.width() : viewSizes.chartArea.height());
+                int radiusEnd = (int) ((viewSizes.chartArea.width() > viewSizes.chartArea.height() ? viewSizes.chartArea.height() : viewSizes.chartArea.width()) / 2f);
+                float radius = radiusEnd + ((radiusStart - radiusEnd) / 2) * (1 - transitionParams.progress);
+
+                radius *= 1f - transitionParams.progress;
+                RectF rectF = new RectF();
+                rectF.set(
+                        viewSizes.chartArea.centerX() - radius,
+                        viewSizes.chartArea.centerY() - radius,
+                        viewSizes.chartArea.centerX() + radius,
+                        viewSizes.chartArea.centerY() + radius
+                );
+                ovalPath.addRoundRect(
+                        rectF, radius, radius, Path.Direction.CW
+                );
+                canvas.clipPath(ovalPath);
+
+//                canvas.scale(
+//                        1f - transitionParams.progress,
+//                        1f - transitionParams.progress ,
+//                        viewSizes.chartArea.centerX(), viewSizes.chartArea.centerY()
+//                );
+//                canvas.rotate(30 *  transitionParams.progress,
+//                        viewSizes.chartArea.centerX(), viewSizes.chartArea.centerY()
+//                );
+            }
             int lastEnabled = -1;
 
             int start = startXIndex - 1;
@@ -54,7 +92,6 @@ public class StackLinearChartView extends BaseChartView<StackLinearChartData, St
                     LineViewData line = lines.get(k);
                     if (!line.enabled && line.alpha == 0 || lastEnabled == k) continue;
 
-                    float p = chartData.xPercentage[1] * fullWidth;
                     int[] y = line.line.y;
 
                     if (y[i] < 0) continue;
@@ -84,12 +121,15 @@ public class StackLinearChartView extends BaseChartView<StackLinearChartData, St
             canvas.clipRect(viewSizes.chartStart, SIGNATURE_TEXT_HEIGHT, viewSizes.chartEnd, getMeasuredHeight() - chartBottom);
             for (int k = lines.size() - 1; k >= 0; k--) {
                 LineViewData line = lines.get(k);
+                line.paint.setAlpha(transitionAlpha);
                 if (k == lastEnabled) {
                     canvas.drawColor(line.paint.getColor());
                 } else {
                     canvas.drawPath(line.chartPath, line.paint);
                 }
+                line.paint.setAlpha(255);
             }
+            canvas.restore();
             canvas.restore();
         }
     }
@@ -98,8 +138,6 @@ public class StackLinearChartView extends BaseChartView<StackLinearChartData, St
     @Override
     protected void drawPickerChart() {
         if (chartData != null) {
-            float fullWidth = (viewSizes.chartWidth / (pickerDelegate.pickerEnd - pickerDelegate.pickerStart));
-            float offset = fullWidth * (pickerDelegate.pickerStart) - HORIZONTAL_PADDING;
 
             for (int k = 0; k < lines.size(); k++) {
                 lines.get(k).chartPath.reset();
@@ -108,7 +146,7 @@ public class StackLinearChartView extends BaseChartView<StackLinearChartData, St
             int lastEnabled = -1;
             int n = chartData.xPercentage.length;
 
-            for (int i = 0; i < n; i++) {
+            for (int i = 0; i < n; i += 4) {
                 float stackOffset = 0;
                 float sum = 0;
 

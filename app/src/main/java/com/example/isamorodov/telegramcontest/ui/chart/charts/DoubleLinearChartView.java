@@ -15,7 +15,7 @@ import com.example.isamorodov.telegramcontest.ui.chart.LineViewData;
 
 import static com.example.isamorodov.telegramcontest.ui.chart.ChartHorizontalLinesData.formatWholeNumber;
 
-public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,LineViewData> {
+public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData, LineViewData> {
     public DoubleLinearChartView(Context context) {
         super(context);
     }
@@ -28,6 +28,11 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
         super(context, attrs, defStyleAttr);
     }
 
+    @Override
+    protected void init() {
+        useMinHeight = true;
+        super.init();
+    }
 
     @Override
     protected void drawChart(Canvas canvas) {
@@ -35,6 +40,28 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
             float fullWidth = (viewSizes.chartWidth / (pickerDelegate.pickerEnd - pickerDelegate.pickerStart));
             float offset = fullWidth * (pickerDelegate.pickerStart) - HORIZONTAL_PADDING;
 
+
+            canvas.save();
+            float transitionAlpha = 1f;
+            if (transitionMode == TRANSITION_MODE_PARENT) {
+
+                transitionAlpha = transitionParams.progress > 0.5f ? 0 : 1f - transitionParams.progress * 2f;
+
+                canvas.scale(
+                        1 + 2 * transitionParams.progress, 1f,
+                        transitionParams.pX, transitionParams.pY
+                );
+
+            } else if (transitionMode == TRANSITION_MODE_CHILD) {
+
+                transitionAlpha = transitionParams.progress < 0.3f ? 0 : transitionParams.progress;
+
+                canvas.save();
+                canvas.scale(
+                        transitionParams.progress, transitionParams.progress,
+                        transitionParams.pX, transitionParams.pY
+                );
+            }
 
             for (int k = 0; k < lines.size(); k++) {
                 LineViewData line = lines.get(k);
@@ -51,7 +78,7 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
                 for (int i = startXIndex; i <= endXIndex; i++) {
                     if (y[i] < 0) continue;
                     float xPoint = chartData.xPercentage[i] * fullWidth - offset;
-                    float yPercentage = (float) y[i] * chartData.linesK[k] / currentMaxHeight;
+                    float yPercentage = ((float) y[i] * chartData.linesK[k] - currentMinHeight) / (currentMaxHeight - currentMinHeight);
                     float yPoint = getMeasuredHeight() - chartBottom - (yPercentage) * (getMeasuredHeight() - chartBottom - SIGNATURE_TEXT_HEIGHT);
 
                     if (USE_LINES) {
@@ -74,11 +101,19 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
                     }
                 }
 
-                line.paint.setAlpha(line.alpha);
+                if (endXIndex - startXIndex > 100) {
+                    line.paint.setStrokeCap(Paint.Cap.SQUARE);
+                } else {
+                    line.paint.setStrokeCap(Paint.Cap.ROUND);
+                }
+                line.paint.setAlpha((int) (line.alpha * transitionAlpha));
                 if (!USE_LINES) canvas.drawPath(line.chartPath, line.paint);
                 else canvas.drawLines(line.linesPath, 0, j, line.paint);
             }
+
+            canvas.restore();
         }
+
     }
 
     @Override
@@ -87,7 +122,7 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
         int bottom = getMeasuredHeight() - PICKER_PADDING;
         int top = getMeasuredHeight() - viewSizes.pikerHeight - PICKER_PADDING;
 
-        bottomChartCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        bottomChartBitmap.eraseColor(0);
         int nl = lines.size();
         if (chartData != null) {
             for (int k = 0; k < nl; k++) {
@@ -145,6 +180,7 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
         }
     }
 
+
     @Override
     protected void drawSelection(Canvas canvas) {
         if (selectedIndex < 0 || !legendShowing) return;
@@ -165,7 +201,7 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
         for (tmpI = 0; tmpI < tmpN; tmpI++) {
             LineViewData line = lines.get(tmpI);
             if (!line.enabled) continue;
-            float yPercentage = (float) line.line.y[selectedIndex] * chartData.linesK[tmpI] / currentMaxHeight;
+            float yPercentage = ((float) line.line.y[selectedIndex] * chartData.linesK[tmpI] - currentMinHeight) / (currentMaxHeight - currentMinHeight);
             float yPoint = getMeasuredHeight() - chartBottom - (yPercentage) * (getMeasuredHeight() - chartBottom - SIGNATURE_TEXT_HEIGHT);
 
             line.selectionPaint.setAlpha(alpha);
@@ -182,13 +218,21 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
         int leftIndex = (rightIndex + 1) % 2;
         float k = chartData.linesK[rightIndex];
 
-        linePaint.setAlpha((int) (a.alpha * 0.1f));
+        float transitionAlpha = 1f;
+        if (transitionMode == TRANSITION_MODE_PARENT) {
+            transitionAlpha = 1f - transitionParams.progress;
+        } else if (transitionMode == TRANSITION_MODE_CHILD) {
+            transitionAlpha = transitionParams.progress;
+        }
+
+
+        linePaint.setAlpha((int) (a.alpha * 0.1f * transitionAlpha));
 
         int chartHeight = getMeasuredHeight() - chartBottom - SIGNATURE_TEXT_HEIGHT;
 
         int textOffset = (int) (SIGNATURE_TEXT_HEIGHT - signaturePaint.getTextSize());
-        for (int i = 1; i < n; i++) {
-            int y = (int) ((getMeasuredHeight() - chartBottom) - chartHeight * (a.values[i] / currentMaxHeight));
+        for (int i = 0; i < n; i++) {
+            int y = (int) ((getMeasuredHeight() - chartBottom) - chartHeight * ((a.values[i] - currentMinHeight) / (currentMaxHeight - currentMinHeight)));
             canvas.drawLine(
                     viewSizes.chartStart,
                     y,
@@ -197,30 +241,60 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
                     linePaint
             );
 
+
             signaturePaint.setColor(lines.get(leftIndex).lineColor);
-            signaturePaint.setAlpha(a.alpha);
+            signaturePaint.setAlpha((int) (a.alpha * (lines.get(leftIndex).alpha / 255f) * transitionAlpha));
 
             canvas.drawText(a.valuesStr[i], HORIZONTAL_PADDING, y - textOffset, signaturePaint);
             signaturePaint2.setColor(lines.get(rightIndex).lineColor);
-            signaturePaint2.setAlpha((int) (a.alpha ));
-            canvas.drawText(formatWholeNumber((int) (a.values[i] / k)), getMeasuredWidth() - HORIZONTAL_PADDING, y - textOffset, signaturePaint2);
+            signaturePaint2.setAlpha((int) (a.alpha * (lines.get(rightIndex).alpha / 255f) * transitionAlpha));
+            canvas.drawText(a.valuesStr2[i], getMeasuredWidth() - HORIZONTAL_PADDING, y - textOffset, signaturePaint2);
         }
     }
 
+    protected void drawBottomLine(Canvas canvas) {
+        float transitionAlpha = 1f;
+        if (transitionMode == TRANSITION_MODE_PARENT) {
+            transitionAlpha = 1f - transitionParams.progress;
+        } else if (transitionMode == TRANSITION_MODE_CHILD) {
+            transitionAlpha = transitionParams.progress;
+        }
+
+        linePaint.setAlpha((int) (255 * 0.1f * transitionAlpha));
+
+
+        signaturePaint.setAlpha((int) (255 * signaturePaintAlpha));
+        int y = (getMeasuredHeight() - chartBottom);
+        canvas.drawLine(
+                viewSizes.chartStart,
+                y,
+                viewSizes.chartEnd,
+                y,
+                linePaint);
+
+    }
+
     @Override
-    LineViewData createLineViewData(ChartData.Line line) {
+    public LineViewData createLineViewData(ChartData.Line line) {
         return new LineViewData(line);
     }
 
 
     public int findMaxValue(int startXIndex, int endXIndex) {
-        int max = super.findMaxValue(startXIndex,endXIndex);
-        return lines.get(0).enabled ? max : (int) (max * chartData.linesK[1]);
+        int max1 = lines.get(0).enabled ? (int) (chartData.lines.get(0).segmentTree.rMaxQ(startXIndex, endXIndex) * chartData.linesK[0]) : 0;
+        int max2 = lines.get(1).enabled ? (int) (chartData.lines.get(1).segmentTree.rMaxQ(startXIndex, endXIndex) * chartData.linesK[1]) : 0;
+        return Math.max(max1, max2);
+    }
+
+    public int findMinValue(int startXIndex, int endXIndex) {
+        int min1 = lines.get(0).enabled ? (int) (chartData.lines.get(0).segmentTree.rMinQ(startXIndex, endXIndex) * chartData.linesK[0]) : 0;
+        int min2 = lines.get(1).enabled ? (int) (chartData.lines.get(1).segmentTree.rMinQ(startXIndex, endXIndex) * chartData.linesK[1]) : 0;
+        return Math.min(min1, min2);
     }
 
     protected void updateBottomMaxHeight() {
         if (!ANIMATE_PICKER_SIZES) return;
-        if(lines.get(0).enabled){
+        if (lines.get(0).enabled) {
             super.updateBottomMaxHeight();
             return;
         }
@@ -240,13 +314,17 @@ public class DoubleLinearChartView extends BaseChartView<DoubleLinearChartData,L
                 @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
                     pickerMaxHeight = (float) animation.getAnimatedValue();
-                    if (bottomChartCanvas != null && canUpdate) drawPickerChart();
+                    invalidatePickerChart = true;
                     invalidate();
                 }
             });
             pickerAnimator.start();
         }
+    }
 
-
+    protected ChartHorizontalLinesData createHorizontalLinesData(int newMaxHeight, int newMinHeight) {
+        int rightIndex = chartData.linesK[0] == 1 ? 1 : 0;
+        float k = chartData.linesK[rightIndex];
+        return new ChartHorizontalLinesData(newMaxHeight, newMinHeight, useMinHeight, k);
     }
 }
