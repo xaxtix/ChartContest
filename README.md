@@ -18,6 +18,6 @@ https://contest.com/chart-android/entry25
 
 
 # Technical details
-Used only android sdk, and support library, for graph rendering used android.graphics.Canvas,
+Used only android sdk and support library, for graph rendering used android.graphics.Canvas,
 for recalculating graph position used binary search and SegmentTree. 😎
 
