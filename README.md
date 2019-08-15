@@ -7,18 +7,18 @@ This solution won 3d place in first stage and 1d place in second stage 🥉🥇
 </p>
   
 
-## First stage 
-frist stage task:
+## First stage 🥉
+task:
 https://t.me/contest/6
 
-result for first stage:
+result:
 https://t.me/contest/26
 
-## Second stage 
-second stage task: 
+## Second stage 🥇
+task: 
 https://t.me/contest/59
 
-result for second stage:
+result:
 https://contest.com/chart-android/entry25
 
 
